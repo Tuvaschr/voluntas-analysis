@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voluntas — Analyst Test Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+  header { background: #1a1a2e; color: #fff; padding: 18px 32px; display: flex; align-items: center; gap: 14px; }
+  header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: .5px; }
+  header span { font-size: .85rem; opacity: .65; }
+  .badge { background: #4f46e5; color: #fff; border-radius: 20px; padding: 3px 12px; font-size: .78rem; font-weight: 600; }
+
+  /* Filters */
+  .filters { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 14px 32px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #64748b; }
+  select { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: .85rem; background: #f8fafc; color: #1a1a2e; cursor: pointer; min-width: 140px; }
+  select:focus { outline: none; border-color: #4f46e5; }
+  .btn { background: #4f46e5; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: .85rem; font-weight: 600; cursor: pointer; margin-top: auto; }
+  .btn:hover { background: #3730a3; }
+  .btn-reset { background: #e2e8f0; color: #475569; }
+  .btn-reset:hover { background: #cbd5e1; }
+  #record-count { margin-top: auto; font-size: .82rem; color: #64748b; white-space: nowrap; }
+
+  /* KPI cards */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; padding: 24px 32px 8px; }
+  .kpi { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 4px solid #4f46e5; }
+  .kpi.green { border-left-color: #10b981; }
+  .kpi.amber { border-left-color: #f59e0b; }
+  .kpi.red { border-left-color: #ef4444; }
+  .kpi.purple { border-left-color: #8b5cf6; }
+  .kpi-value { font-size: 2rem; font-weight: 800; color: #1a1a2e; }
+  .kpi-label { font-size: .78rem; color: #64748b; margin-top: 4px; font-weight: 500; }
+
+  /* Charts grid */
+  .charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px 32px; }
+  .chart-card { background: #fff; border-radius: 12px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .chart-card.wide { grid-column: span 2; }
+  .chart-card h3 { font-size: .9rem; font-weight: 700; color: #334155; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 240px; }
+  .chart-wrap.tall { height: 300px; }
+
+  /* Table */
+  .table-section { padding: 0 32px 32px; }
+  .table-section h3 { font-size: .9rem; font-weight: 700; color: #334155; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: .8rem; }
+  thead tr { background: #1a1a2e; color: #fff; }
+  th { padding: 10px 14px; text-align: left; font-weight: 600; font-size: .75rem; letter-spacing: .3px; white-space: nowrap; }
+  td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .pill { display: inline-block; border-radius: 12px; padding: 2px 9px; font-size: .72rem; font-weight: 600; }
+  .pill-yes { background: #d1fae5; color: #065f46; }
+  .pill-no { background: #fee2e2; color: #7f1d1d; }
+  .pill-na { background: #f1f5f9; color: #64748b; }
+  .bar-cell { display: flex; align-items: center; gap: 6px; }
+  .mini-bar { height: 6px; border-radius: 3px; background: #4f46e5; }
+  /* Analysis section */
+  .analysis-section { padding: 0 32px 8px; }
+  .analysis-section > h2 { font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 16px; }
+  .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn { border: 1.5px solid #cbd5e1; background: #f8fafc; border-radius: 20px; padding: 6px 18px; font-size: .82rem; font-weight: 600; cursor: pointer; color: #475569; transition: all .15s; }
+  .tab-btn.active { background: #1a1a2e; border-color: #1a1a2e; color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .an-note { background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: .8rem; line-height: 1.6; color: #065f46; }
+  .an-note.amber { background: #fff7ed; border-left-color: #f59e0b; color: #92400e; }
+  .an-note strong { font-weight: 700; }
+  .an-toggle-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .an-toggle-row span { font-size: .74rem; color: #64748b; font-weight: 600; }
+  .an-toggle-btn { border: 1.5px solid #cbd5e1; background: #f8fafc; border-radius: 20px; padding: 4px 14px; font-size: .76rem; font-weight: 600; cursor: pointer; color: #475569; }
+  .an-toggle-btn.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .an-table-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 10px; }
+  .an-table-wrap table { width: 100%; border-collapse: collapse; background: #fff; font-size: .8rem; }
+  .an-table-wrap thead tr.ah-main { background: #1a1a2e; color: #fff; }
+  .an-table-wrap thead tr.ah-sub  { background: #2d3a52; color: #cbd5e1; }
+  .an-table-wrap th { padding: 10px 14px; text-align: center; font-weight: 600; font-size: .74rem; letter-spacing: .3px; white-space: nowrap; }
+  .an-table-wrap th.al { text-align: left; }
+  .an-table-wrap td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; text-align: center; vertical-align: middle; }
+  .an-table-wrap td.al { text-align: left; font-weight: 600; color: #334155; }
+  .an-table-wrap tr:last-child td { border-bottom: none; }
+  .an-table-wrap tr:nth-child(even) { background: #f8fafc; }
+  .an-table-wrap tr.an-total td { background: #f1f5f9; font-weight: 700; border-top: 2px solid #e2e8f0; }
+  .an-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .an-count { font-weight: 700; color: #1a1a2e; }
+  .an-pct   { font-size: .7rem; color: #64748b; }
+  .an-bar   { height: 4px; border-radius: 2px; margin-top: 3px; }
+  .an-footnote { font-size: .72rem; color: #94a3b8; margin-bottom: 18px; padding-left: 2px; }
+  .an-interp { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 24px; }
+  .an-interp h3 { font-size: .84rem; font-weight: 700; color: #334155; margin-bottom: 10px; }
+  .an-interp ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .an-interp li { font-size: .8rem; color: #475569; line-height: 1.6; padding-left: 14px; position: relative; }
+  .an-interp li::before { content: '›'; position: absolute; left: 0; color: #7eb8d4; font-weight: 700; }
+  .viz-card { background: #fff; border-radius: 12px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 20px; }
+  .viz-card h3 { font-size: .84rem; font-weight: 700; color: #334155; margin-bottom: 4px; }
+  .viz-card .viz-sub { font-size: .72rem; color: #94a3b8; margin-bottom: 16px; }
+  .viz-wrap { position: relative; height: 320px; }
+  .viz-wrap.tall { height: 360px; }
+  .an-legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .an-legend-item { display: flex; align-items: center; gap: 6px; font-size: .76rem; color: #475569; font-weight: 600; }
+  .an-dot { width: 11px; height: 11px; border-radius: 3px; }
+  /* Codebook */
+  .codebook-section { padding: 0 32px 40px; }
+  .codebook-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; margin-bottom: 14px; }
+  .codebook-toggle h3 { font-size: .9rem; font-weight: 700; color: #334155; }
+  .codebook-toggle .cb-chevron { font-size: .75rem; color: #64748b; transition: transform .2s; }
+  .codebook-toggle .cb-chevron.open { transform: rotate(180deg); }
+  .codebook-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .codebook-wrap table { width: 100%; border-collapse: collapse; background: #fff; font-size: .8rem; }
+  .codebook-wrap thead tr { background: #1e293b; color: #fff; }
+  .codebook-wrap th { padding: 10px 16px; text-align: left; font-weight: 600; font-size: .75rem; letter-spacing: .3px; white-space: nowrap; }
+  .codebook-wrap td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: top; line-height: 1.5; }
+  .codebook-wrap tr:last-child td { border-bottom: none; }
+  .codebook-wrap tr:nth-child(even) { background: #f8fafc; }
+  .cb-type { display: inline-block; border-radius: 6px; padding: 1px 8px; font-size: .7rem; font-weight: 600; white-space: nowrap; }
+  .cb-type-id       { background: #e0e7ff; color: #3730a3; }
+  .cb-type-cat      { background: #fef3c7; color: #92400e; }
+  .cb-type-bin      { background: #d1fae5; color: #065f46; }
+  .cb-type-cont     { background: #ede9fe; color: #5b21b6; }
+  .cb-type-bin-multi { background: #fee2e2; color: #7f1d1d; }
+  .cb-note { font-size: .72rem; color: #ef4444; margin-top: 3px; }
+  .cb-values { color: #475569; font-size: .78rem; }
+  @media (max-width: 900px) {
+    .charts { grid-template-columns: 1fr; }
+    .chart-card.wide { grid-column: span 1; }
+    .kpis { padding: 16px; }
+    .filters, .charts, .table-section, .codebook-section { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Voluntas — Analyst Test Dataset</h1>
+    <span>Healthcare Access &amp; Barriers Survey · 300 respondents</span>
+  </div>
+  <div style="margin-left:auto"><span class="badge">Interactive Dashboard</span></div>
+</header>
+
+<!-- Filters -->
+<div class="filters">
+  <div class="filter-group">
+    <label>Gender</label>
+    <select id="f-gender"><option value="">All</option><option>Female</option><option>Male</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Age Group</label>
+    <select id="f-age"><option value="">All</option><option>18-24</option><option>25-34</option><option>35-44</option><option>45-54</option><option>55+</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Region</label>
+    <select id="f-region"><option value="">All</option><option>Central</option><option>East</option><option>North</option><option>South</option><option>West</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Healthcare Access</label>
+    <select id="f-hca"><option value="">All</option><option>Yes</option><option>No</option><option value="__missing__">Not answered</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Education Level</label>
+    <select id="f-edu"><option value="">All</option><option>No formal education</option><option>Primary</option><option>Secondary</option><option>University or above</option><option>Vocational/Technical</option><option value="__missing__">Not answered</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Income Source</label>
+    <select id="f-income"><option value="">All</option><option>Employment</option><option>Family/remittances</option><option>Government support</option><option>No income</option><option>Self-employment</option></select>
+  </div>
+  <button class="btn btn-reset" onclick="resetFilters()">Reset</button>
+  <span id="record-count">300 of 300 respondents</span>
+</div>
+
+<!-- KPIs -->
+<div class="kpis">
+  <div class="kpi green"><div class="kpi-value" id="kpi-total">300</div><div class="kpi-label">Respondents</div></div>
+  <div class="kpi"><div class="kpi-value" id="kpi-hca-yes">—</div><div class="kpi-label">Have Healthcare Access</div></div>
+  <div class="kpi red"><div class="kpi-value" id="kpi-hca-no">—</div><div class="kpi-label">No Healthcare Access</div></div>
+  <div class="kpi amber"><div class="kpi-value" id="kpi-food">—</div><div class="kpi-label">Avg Monthly Food Exp (USD)</div></div>
+  <div class="kpi purple"><div class="kpi-value" id="kpi-barriers">—</div><div class="kpi-label">Total Barriers Reported</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- DISAGGREGATED ANALYSIS                               -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="analysis-section">
+  <h2>Disaggregated Analysis</h2>
+
+  <!-- Tab buttons -->
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="showTab('tab1a')">1a · Education by Gender</button>
+    <button class="tab-btn" onclick="showTab('tab1b')">1b · Healthcare Access by Region</button>
+    <button class="tab-btn" onclick="showTab('tab1c')">1c · Income Source by Age Group</button>
+    <button class="tab-btn" onclick="showTab('tab2b')">2b · Barriers by Gender</button>
+  </div>
+
+  <!-- ── 1a: Education × Gender ─────────────────────────── -->
+  <div class="tab-panel active" id="tab1a">
+    <div class="an-note"><strong>Missing data note:</strong> 10 respondents (3.3%) did not answer <code>education_level</code> — 9 female, 1 male. Counts shown in "Not answered" row. <strong>All percentages calculated on valid responses only (n = 290).</strong> No missing values on gender.</div>
+    <div class="an-toggle-row">
+      <span>Show %:</span>
+      <button class="an-toggle-btn active" onclick="set1a('col')" id="1a-col">% Within Gender (col %)</button>
+      <button class="an-toggle-btn" onclick="set1a('row')" id="1a-row">% Within Education (row %)</button>
+      <button class="an-toggle-btn" onclick="set1a('total')" id="1a-total">% of Valid (n=290)</button>
+    </div>
+    <div class="an-legend">
+      <div class="an-legend-item"><div class="an-dot" style="background:#7eb8d4"></div>Female (n=152 valid)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#8cc8a4"></div>Male (n=138 valid)</div>
+    </div>
+    <div class="an-table-wrap">
+      <table>
+        <thead>
+          <tr class="ah-main">
+            <th class="al" rowspan="2">Education Level</th>
+            <th colspan="2">Female</th><th colspan="2">Male</th><th colspan="2">Total</th>
+          </tr>
+          <tr class="ah-sub">
+            <th>n</th><th id="1a-hf">% (col)</th>
+            <th>n</th><th id="1a-hm">% (col)</th>
+            <th>n</th><th id="1a-ht">% (col)</th>
+          </tr>
+        </thead>
+        <tbody id="1a-body"></tbody>
+      </table>
+    </div>
+    <p class="an-footnote">* Percentages calculated on valid responses only (n=290). 10 respondents did not provide education data and are excluded from percentage calculations.</p>
+    <div class="an-interp">
+      <h3>Key observations</h3>
+      <ul>
+        <li>Secondary education is the most common level for both genders: 37.5% of females and 36.2% of males (column %, n=290), making it the modal category.</li>
+        <li>University or above is the only level where males exceed females in column share (13.8% vs 10.5%), suggesting a modest male skew at higher education.</li>
+        <li>Vocational/Technical shows the largest female-majority within a level: 56.6% female vs 43.4% male (row %).</li>
+        <li>10 respondents did not answer the education question (9 female, 1 male) — shown as "Not answered" with dashes for percentages.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 1b: Healthcare × Region ───────────────────────── -->
+  <div class="tab-panel" id="tab1b">
+    <div class="an-note"><strong>Missing data note:</strong> 19 respondents (6.3%) did not answer <code>healthcare_access</code>. No missing values on region. <strong>All percentages calculated on valid responses only (n = 281).</strong> Not answered counts shown per region.</div>
+    <div class="an-toggle-row">
+      <span>Show %:</span>
+      <button class="an-toggle-btn active" onclick="set1b('row')" id="1b-row">% Within Region (row %)</button>
+      <button class="an-toggle-btn" onclick="set1b('col')" id="1b-col">% Within Access Category (col %)</button>
+      <button class="an-toggle-btn" onclick="set1b('total')" id="1b-total">% of Valid (n=281)</button>
+    </div>
+    <div class="an-legend">
+      <div class="an-legend-item"><div class="an-dot" style="background:#8cc8a4"></div>Yes — has access (n=158)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#f0c08c"></div>No — no access (n=123)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#94a3b8"></div>Not answered (n=19)</div>
+    </div>
+    <div class="an-table-wrap">
+      <table>
+        <thead>
+          <tr class="ah-main">
+            <th class="al" rowspan="2">Region</th>
+            <th rowspan="2">Total n</th><th rowspan="2">Valid n</th>
+            <th colspan="2">Yes — Has Access</th>
+            <th colspan="2">No — No Access</th>
+            <th colspan="2">Not Answered</th>
+          </tr>
+          <tr class="ah-sub">
+            <th>n</th><th id="1b-hy">% (row)</th>
+            <th>n</th><th id="1b-hn">% (row)</th>
+            <th>n</th><th>% of region</th>
+          </tr>
+        </thead>
+        <tbody id="1b-body"></tbody>
+      </table>
+    </div>
+    <p class="an-footnote">* Percentages calculated on valid responses only. Not answered column shows raw counts and share of regional total for reference only.</p>
+    <div class="an-interp">
+      <h3>Key observations</h3>
+      <ul>
+        <li>Central stands out with the highest access rate: 66.7% of valid respondents (n=45) have healthcare access, and zero "Not answered" responses.</li>
+        <li>North, South, West, and East show similar access rates among valid respondents, ranging from 53.4% (North) to 55.2% (East).</li>
+        <li>East has the highest proportion of "Not answered" responses (n=7, 10.8% of its 65 respondents), introducing the most uncertainty for that region.</li>
+        <li>Overall among valid respondents (n=281): 56.2% have healthcare access (n=158) and 43.8% do not (n=123).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 1c: Income × Age ──────────────────────────────── -->
+  <div class="tab-panel" id="tab1c">
+    <div class="an-note"><strong>No missing data:</strong> Both <code>income_source</code> and <code>age_group</code> are fully complete. All percentages based on n = 300.</div>
+    <div class="an-toggle-row">
+      <span>Show %:</span>
+      <button class="an-toggle-btn active" onclick="set1c('col')" id="1c-col">% Within Age Group (col %)</button>
+      <button class="an-toggle-btn" onclick="set1c('row')" id="1c-row">% Within Income Source (row %)</button>
+      <button class="an-toggle-btn" onclick="set1c('total')" id="1c-total">% of Total (n=300)</button>
+    </div>
+    <div class="an-legend">
+      <div class="an-legend-item"><div class="an-dot" style="background:#7eb8d4"></div>18-24 (n=65)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#8cc8a4"></div>25-34 (n=68)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#f0c08c"></div>35-44 (n=76)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#c8a0c4"></div>45-54 (n=47)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#f0d880"></div>55+ (n=44)</div>
+    </div>
+    <div class="an-table-wrap">
+      <table>
+        <thead>
+          <tr class="ah-main">
+            <th class="al" rowspan="2">Income Source</th>
+            <th colspan="2">18-24 (n=65)</th><th colspan="2">25-34 (n=68)</th>
+            <th colspan="2">35-44 (n=76)</th><th colspan="2">45-54 (n=47)</th>
+            <th colspan="2">55+ (n=44)</th><th colspan="2">Total (n=300)</th>
+          </tr>
+          <tr class="ah-sub">
+            <th>n</th><th id="1c-h1">% (col)</th><th>n</th><th id="1c-h2">% (col)</th>
+            <th>n</th><th id="1c-h3">% (col)</th><th>n</th><th id="1c-h4">% (col)</th>
+            <th>n</th><th id="1c-h5">% (col)</th><th>n</th><th id="1c-h6">% (col)</th>
+          </tr>
+        </thead>
+        <tbody id="1c-body"></tbody>
+      </table>
+    </div>
+    <p class="an-footnote">No observations excluded. Both variables fully complete (n=300).</p>
+
+    <!-- Income × Age visualisation -->
+    <div class="viz-card">
+      <h3>Distribution of Income Source by Age Group</h3>
+      <p class="viz-sub">Grouped bar chart — counts per income source within each age group</p>
+      <div class="viz-wrap"><canvas id="viz-income-age"></canvas></div>
+    </div>
+
+    <div class="an-interp">
+      <h3>Key observations</h3>
+      <ul>
+        <li>Employment is the most common income source across all age groups, ranging from 23.5% (25-34) to 31.9% (45-54) within each group.</li>
+        <li>"No income" is most prevalent among 35-44 year olds (13.2%) and lowest among 45-54 (4.3%) and 55+ (4.5%).</li>
+        <li>Self-employment peaks among 25-34 year olds (26.5%) and 55+ (27.3%), and is lowest in the 45-54 group (17.0%).</li>
+        <li>Family/remittances is highest among the youngest group (18-24, 23.1%) and declines with age to 15.9% among 55+.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 2b: Barriers × Gender ─────────────────────────── -->
+  <div class="tab-panel" id="tab2b">
+    <div class="an-note amber"><strong>Correction:</strong> Long wait times was listed as 100.4% in source notes. The correct figure is 123 ÷ 300 × 100 = <strong>41.0%</strong>. All figures verified from dataset.</div>
+    <div class="an-note"><strong>No missing data:</strong> All barrier variables and gender are fully complete (n=300). Percentages reflect the share within each gender who selected each barrier. Female n=161 · Male n=139.</div>
+    <div class="an-legend">
+      <div class="an-legend-item"><div class="an-dot" style="background:#7eb8d4"></div>Female (n=161)</div>
+      <div class="an-legend-item"><div class="an-dot" style="background:#8cc8a4"></div>Male (n=139)</div>
+    </div>
+    <div class="an-table-wrap">
+      <table>
+        <thead>
+          <tr class="ah-main">
+            <th class="al" rowspan="2">Barrier</th>
+            <th colspan="2">Overall</th>
+            <th colspan="2">Female</th>
+            <th colspan="2">Male</th>
+            <th rowspan="2">Gap (F−M)</th>
+          </tr>
+          <tr class="ah-sub">
+            <th>n</th><th>%</th><th>n</th><th>%</th><th>n</th><th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="al">Cost</td><td>117</td><td>39.0%</td><td>66</td><td>41.0%</td><td>51</td><td>36.7%</td><td style="color:#7eb8d4;font-weight:700">F +4.3pp</td></tr>
+          <tr><td class="al">Distance</td><td>85</td><td>28.3%</td><td>41</td><td>25.5%</td><td>44</td><td>31.7%</td><td style="color:#8cc8a4;font-weight:700">M +6.2pp</td></tr>
+          <tr><td class="al">Language</td><td>58</td><td>19.3%</td><td>28</td><td>17.4%</td><td>30</td><td>21.6%</td><td style="color:#8cc8a4;font-weight:700">M +4.2pp</td></tr>
+          <tr><td class="al">Long wait times</td><td>123</td><td>41.0%</td><td>73</td><td>45.3%</td><td>50</td><td>36.0%</td><td style="color:#7eb8d4;font-weight:700">F +9.3pp</td></tr>
+          <tr><td class="al">Lack of awareness</td><td>55</td><td>18.3%</td><td>27</td><td>16.8%</td><td>28</td><td>20.1%</td><td style="color:#8cc8a4;font-weight:700">M +3.3pp</td></tr>
+          <tr class="an-total"><td class="al">Total barriers reported</td><td>438</td><td>—</td><td>235</td><td>—</td><td>203</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="an-footnote">pp = percentage points. Barriers are binary multi-select; percentages do not sum to 100%.</p>
+
+    <!-- Barriers viz -->
+    <div class="viz-card">
+      <h3>Barrier Selection Rate by Gender</h3>
+      <p class="viz-sub">% of respondents within each gender selecting each barrier</p>
+      <div class="viz-wrap"><canvas id="viz-barriers-gender"></canvas></div>
+    </div>
+    <div class="an-interp">
+      <h3>Key observations</h3>
+      <ul>
+        <li>Long wait times is the most frequently reported barrier overall (41.0%, n=123) and shows the largest gender gap — females at 45.3% vs males at 36.0%, a difference of 9.3 percentage points.</li>
+        <li>Cost is the second most common barrier (39.0%, n=117), with females slightly more likely to report it (41.0%) than males (36.7%), a gap of 4.3 percentage points.</li>
+        <li>Distance and language are both reported more by males: distance at 31.7% vs 25.5% (gap: 6.2pp), language at 21.6% vs 17.4% (gap: 4.2pp).</li>
+        <li>Lack of awareness is the least commonly reported barrier for both genders (females 16.8%, males 20.1%), with males slightly more likely to select it (gap: 3.3pp).</li>
+        <li>Females report higher rates on 2 of 5 barriers (cost, long wait times); males report higher rates on 3 of 5 (distance, language, lack of awareness).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+<!-- Charts -->
+<div class="charts">
+  <div class="chart-card">
+    <h3>Healthcare Access by Region</h3>
+    <div class="chart-wrap"><canvas id="chart-region"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>Top Barriers to Healthcare</h3>
+    <div class="chart-wrap"><canvas id="chart-barriers"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>Healthcare Access by Age Group</h3>
+    <div class="chart-wrap"><canvas id="chart-age"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>Income Source Distribution</h3>
+    <div class="chart-wrap"><canvas id="chart-income"></canvas></div>
+  </div>
+  <div class="chart-card wide">
+    <h3>Education Level vs Healthcare Access</h3>
+    <div class="chart-wrap tall"><canvas id="chart-edu"></canvas></div>
+  </div>
+  <div class="chart-card wide">
+    <h3>Monthly Food Expenditure Distribution (USD)</h3>
+    <div class="chart-wrap"><canvas id="chart-food"></canvas></div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-section">
+  <div onclick="toggleTable()" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;margin-bottom:0;padding:16px 0 16px;">
+    <h3 style="margin:0">Respondent Data (<span id="tbl-count">300</span> records shown)</h3>
+    <span id="tbl-chevron" style="font-size:.75rem;color:#64748b;transition:transform .2s">&#9660;</span>
+  </div>
+  <div id="tbl-body-wrap" style="display:none;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+      <input id="tbl-search" type="text" placeholder="Search by ID, region, education..." 
+        style="border:1.5px solid #cbd5e1;border-radius:8px;padding:6px 12px;font-size:.82rem;min-width:260px;outline:none;"
+        oninput="refresh()" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#cbd5e1'">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Gender</th><th>Age Group</th><th>Region</th>
+            <th>Healthcare Access</th><th>Education</th><th>Income Source</th>
+            <th>Food Exp (USD)</th><th>Cost</th><th>Distance</th><th>Language</th><th>Wait Times</th><th>Awareness</th>
+          </tr>
+          <tr style="background:#2d3a52;">
+            <th><input id="tf-id" placeholder="ID" oninput="refreshTable()" style="width:64px;padding:3px 6px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;"></th>
+            <th><select id="tf-gender" onchange="refreshTable()" style="padding:3px 5px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;"><option value="">All</option><option>Female</option><option>Male</option></select></th>
+            <th><select id="tf-age" onchange="refreshTable()" style="padding:3px 5px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;"><option value="">All</option><option>18-24</option><option>25-34</option><option>35-44</option><option>45-54</option><option>55+</option></select></th>
+            <th><select id="tf-region" onchange="refreshTable()" style="padding:3px 5px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;"><option value="">All</option><option>North</option><option>South</option><option>East</option><option>West</option><option>Central</option></select></th>
+            <th><select id="tf-hca" onchange="refreshTable()" style="padding:3px 5px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;"><option value="">All</option><option>Yes</option><option>No</option></select></th>
+            <th><select id="tf-edu" onchange="refreshTable()" style="padding:3px 5px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;width:110px"><option value="">All</option><option>No formal education</option><option>Primary</option><option>Secondary</option><option>Vocational/Technical</option><option>University or above</option></select></th>
+            <th><select id="tf-income" onchange="refreshTable()" style="padding:3px 5px;border-radius:5px;border:none;font-size:.72rem;background:#3d4f6a;color:#fff;outline:none;"><option value="">All</option><option>Employment</option><option>Self-employment</option><option>Government support</option><option>Family/remittances</option><option>No income</option></select></th>
+            <th colspan="6"></th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const RAW = [{"resp_id": "R0001", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 38.1, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0002", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": null, "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 79.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0003", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": null, "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 177.5, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0004", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 143.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0005", "gender": "Male", "age_group": "45-54", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 70.9, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0006", "gender": "Male", "age_group": "55+", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 190.4, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0007", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 126.9, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0008", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 82.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0009", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 226.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0010", "gender": "Female", "age_group": "25-34", "region": "West", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "No income", "monthly_food_exp": 85.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0011", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 148.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0012", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": NaN, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0013", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 254.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0014", "gender": "Male", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": null, "income_source": "Family/remittances", "monthly_food_exp": 164.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0015", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 74.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0016", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 205.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0017", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 113.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0018", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "No", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": 102.2, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0019", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 197.5, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0020", "gender": "Male", "age_group": "25-34", "region": "West", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 138.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0021", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 164.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0022", "gender": "Male", "age_group": "45-54", "region": "North", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 226.2, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0023", "gender": "Male", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 84.2, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0024", "gender": "Male", "age_group": "25-34", "region": "East", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 145.7, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0025", "gender": "Male", "age_group": "55+", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0026", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 146.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0027", "gender": "Male", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 107.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0028", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 178.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0029", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 131.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0030", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 177.7, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0031", "gender": "Female", "age_group": "25-34", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 201.3, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0032", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 168.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0033", "gender": "Male", "age_group": "18-24", "region": "East", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 107.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0034", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": null, "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 93.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0035", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 107.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0036", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Family/remittances", "monthly_food_exp": 106.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0037", "gender": "Male", "age_group": "45-54", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 175.0, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0038", "gender": "Male", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 100.9, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0039", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 49.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0040", "gender": "Male", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 117.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0041", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 89.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0042", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 113.0, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0043", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 110.3, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0044", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 178.2, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0045", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 113.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0046", "gender": "Female", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 73.1, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0047", "gender": "Male", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 156.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0048", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": null, "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 143.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0049", "gender": "Female", "age_group": "25-34", "region": "West", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Self-employment", "monthly_food_exp": 107.3, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0050", "gender": "Male", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 155.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0051", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 119.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0052", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 146.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0053", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 161.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0054", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 146.8, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0055", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 130.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0056", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 165.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0057", "gender": "Male", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 126.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0058", "gender": "Male", "age_group": "35-44", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 195.7, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0059", "gender": "Male", "age_group": "55+", "region": "West", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 195.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0060", "gender": "Male", "age_group": "35-44", "region": "East", "healthcare_access": "No", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 189.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0061", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 172.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0062", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 93.0, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0063", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 188.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0064", "gender": "Male", "age_group": "35-44", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Family/remittances", "monthly_food_exp": 68.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0065", "gender": "Male", "age_group": "55+", "region": "North", "healthcare_access": null, "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 167.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0066", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 83.0, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0067", "gender": "Male", "age_group": "55+", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 83.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0068", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 149.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0069", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 134.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0070", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 178.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0071", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 155.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0072", "gender": "Male", "age_group": "18-24", "region": "Central", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 248.5, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0073", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 105.5, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0074", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": null, "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 113.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0075", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 132.7, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0076", "gender": "Female", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 154.6, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0077", "gender": "Female", "age_group": "45-54", "region": "North", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 192.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0078", "gender": "Male", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 82.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0079", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 86.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0080", "gender": "Male", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 210.0, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0081", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0082", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 88.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0083", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 131.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0084", "gender": "Male", "age_group": "45-54", "region": "West", "healthcare_access": null, "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 236.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0085", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "No", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": 137.7, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0086", "gender": "Male", "age_group": "45-54", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "No income", "monthly_food_exp": 51.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0087", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "No", "education_level": null, "income_source": "Family/remittances", "monthly_food_exp": 136.0, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0088", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 160.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0089", "gender": "Female", "age_group": "45-54", "region": "West", "healthcare_access": null, "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 75.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0090", "gender": "Male", "age_group": "45-54", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 139.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0091", "gender": "Male", "age_group": "55+", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 199.9, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0092", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "No", "education_level": "University or above", "income_source": "No income", "monthly_food_exp": 61.3, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0093", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 126.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0094", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 118.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0095", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 196.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0096", "gender": "Female", "age_group": "55+", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0097", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 124.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0098", "gender": "Male", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 106.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0099", "gender": "Male", "age_group": "45-54", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Government support", "monthly_food_exp": 103.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0100", "gender": "Male", "age_group": "45-54", "region": "East", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 161.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0101", "gender": "Male", "age_group": "18-24", "region": "East", "healthcare_access": null, "education_level": "Primary", "income_source": "No income", "monthly_food_exp": 87.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0102", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": null, "income_source": "Employment", "monthly_food_exp": 267.4, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0103", "gender": "Male", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 169.3, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0104", "gender": "Female", "age_group": "45-54", "region": "North", "healthcare_access": "No", "education_level": null, "income_source": "Employment", "monthly_food_exp": 209.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0105", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 158.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0106", "gender": "Male", "age_group": "55+", "region": "Central", "healthcare_access": "No", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0107", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 138.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0108", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": NaN, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0109", "gender": "Male", "age_group": "55+", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 232.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0110", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 77.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0111", "gender": "Male", "age_group": "25-34", "region": "West", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 102.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0112", "gender": "Male", "age_group": "55+", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 131.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0113", "gender": "Female", "age_group": "55+", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 109.7, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0114", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 103.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0115", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 109.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0116", "gender": "Female", "age_group": "25-34", "region": "Central", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 148.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0117", "gender": "Female", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 176.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0118", "gender": "Male", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 68.0, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0119", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 171.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0120", "gender": "Female", "age_group": "45-54", "region": "West", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 195.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0121", "gender": "Female", "age_group": "45-54", "region": "Central", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 184.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0122", "gender": "Female", "age_group": "45-54", "region": "North", "healthcare_access": "Yes", "education_level": null, "income_source": "Government support", "monthly_food_exp": 84.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0123", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 195.2, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0124", "gender": "Male", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 137.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0125", "gender": "Male", "age_group": "18-24", "region": "East", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 229.5, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0126", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 202.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0127", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 230.4, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0128", "gender": "Female", "age_group": "55+", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 110.0, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0129", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 273.9, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0130", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 134.3, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0131", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 128.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0132", "gender": "Male", "age_group": "45-54", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 135.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0133", "gender": "Male", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 78.7, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0134", "gender": "Male", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 100.6, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0135", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": 140.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0136", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "No", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 123.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0137", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 94.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0138", "gender": "Female", "age_group": "45-54", "region": "West", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 217.6, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0139", "gender": "Male", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 251.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0140", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": null, "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 205.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0141", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 85.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0142", "gender": "Male", "age_group": "55+", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 173.3, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0143", "gender": "Female", "age_group": "25-34", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0144", "gender": "Male", "age_group": "25-34", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 70.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0145", "gender": "Male", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 96.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0146", "gender": "Male", "age_group": "55+", "region": "Central", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 143.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0147", "gender": "Female", "age_group": "55+", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 167.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0148", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 181.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0149", "gender": "Male", "age_group": "25-34", "region": "Central", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 95.7, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0150", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": null, "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 164.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0151", "gender": "Female", "age_group": "45-54", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 153.3, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0152", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "No income", "monthly_food_exp": 71.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0153", "gender": "Male", "age_group": "25-34", "region": "West", "healthcare_access": "No", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 122.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0154", "gender": "Female", "age_group": "55+", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 98.2, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0155", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 92.5, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0156", "gender": "Male", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": 63.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0157", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 88.2, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0158", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 105.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0159", "gender": "Male", "age_group": "18-24", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 139.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0160", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 167.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0161", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 143.0, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0162", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 113.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0163", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 177.2, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0164", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 232.3, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0165", "gender": "Male", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": 102.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0166", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 83.5, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0167", "gender": "Male", "age_group": "25-34", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 169.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0168", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 168.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0169", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 229.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0170", "gender": "Female", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": null, "income_source": "Self-employment", "monthly_food_exp": 137.4, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0171", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": null, "income_source": "Employment", "monthly_food_exp": 218.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0172", "gender": "Male", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 165.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0173", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 157.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0174", "gender": "Male", "age_group": "55+", "region": "South", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 107.9, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0175", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "No income", "monthly_food_exp": 84.5, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0176", "gender": "Male", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 151.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0177", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 203.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0178", "gender": "Male", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 143.8, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0179", "gender": "Female", "age_group": "55+", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 115.4, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0180", "gender": "Male", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 175.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0181", "gender": "Male", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 199.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0182", "gender": "Male", "age_group": "35-44", "region": "East", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 58.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0183", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 151.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0184", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 272.1, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0185", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 149.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0186", "gender": "Female", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 161.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0187", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "No", "education_level": "University or above", "income_source": "No income", "monthly_food_exp": 64.7, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0188", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 154.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0189", "gender": "Female", "age_group": "55+", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 108.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0190", "gender": "Male", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 156.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0191", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 121.7, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0192", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 198.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0193", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 191.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0194", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 215.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0195", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 201.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0196", "gender": "Male", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 240.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0197", "gender": "Female", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 282.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0198", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 220.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0199", "gender": "Female", "age_group": "55+", "region": "West", "healthcare_access": "No", "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 122.0, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0200", "gender": "Female", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 171.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0201", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 134.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0202", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 153.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0203", "gender": "Male", "age_group": "25-34", "region": "East", "healthcare_access": null, "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 155.5, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0204", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 143.8, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0205", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 66.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0206", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 109.8, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0207", "gender": "Male", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 48.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0208", "gender": "Female", "age_group": "45-54", "region": "Central", "healthcare_access": "No", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 166.5, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0209", "gender": "Male", "age_group": "55+", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 180.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0210", "gender": "Male", "age_group": "45-54", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 113.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0211", "gender": "Female", "age_group": "35-44", "region": "Central", "healthcare_access": "No", "education_level": null, "income_source": "Self-employment", "monthly_food_exp": 227.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0212", "gender": "Female", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 191.7, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0213", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 167.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0214", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 86.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0215", "gender": "Female", "age_group": "18-24", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "No income", "monthly_food_exp": 66.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0216", "gender": "Male", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 170.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0217", "gender": "Male", "age_group": "25-34", "region": "East", "healthcare_access": null, "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 182.4, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0218", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 117.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0219", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": null, "income_source": "Self-employment", "monthly_food_exp": 199.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0220", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0221", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "Primary", "income_source": "No income", "monthly_food_exp": 96.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0222", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Primary", "income_source": "Family/remittances", "monthly_food_exp": 175.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0223", "gender": "Male", "age_group": "55+", "region": "South", "healthcare_access": null, "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 100.1, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0224", "gender": "Male", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 157.4, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0225", "gender": "Male", "age_group": "45-54", "region": "East", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 179.7, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0226", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "No income", "monthly_food_exp": 87.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0227", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": null, "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 119.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0228", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Employment", "monthly_food_exp": 170.4, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0229", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 124.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0230", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 267.1, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0231", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 171.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0232", "gender": "Female", "age_group": "55+", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 163.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0233", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 111.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0234", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 111.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0235", "gender": "Male", "age_group": "45-54", "region": "East", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 194.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0236", "gender": "Female", "age_group": "55+", "region": "East", "healthcare_access": null, "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 157.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0237", "gender": "Male", "age_group": "45-54", "region": "Central", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 208.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0238", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 124.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0239", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 199.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0240", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 179.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0241", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 104.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0242", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 199.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0243", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 202.6, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0244", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Self-employment", "monthly_food_exp": 60.3, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0245", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": 56.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0246", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 154.8, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0247", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Government support", "monthly_food_exp": 94.0, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0248", "gender": "Female", "age_group": "35-44", "region": "Central", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 113.0, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0249", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 59.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0250", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "No", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 132.7, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0251", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 107.2, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0252", "gender": "Male", "age_group": "45-54", "region": "West", "healthcare_access": "No", "education_level": "Primary", "income_source": "No income", "monthly_food_exp": 51.8, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0253", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Government support", "monthly_food_exp": NaN, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0254", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "No", "education_level": "Primary", "income_source": "Family/remittances", "monthly_food_exp": 103.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0255", "gender": "Male", "age_group": "45-54", "region": "North", "healthcare_access": null, "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 140.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0256", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 245.3, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0257", "gender": "Female", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "No income", "monthly_food_exp": 100.8, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0258", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 194.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0259", "gender": "Female", "age_group": "45-54", "region": "East", "healthcare_access": "No", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 79.4, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0260", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 178.4, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0261", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 195.6, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0262", "gender": "Female", "age_group": "25-34", "region": "East", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0263", "gender": "Male", "age_group": "18-24", "region": "East", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 97.2, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0264", "gender": "Female", "age_group": "18-24", "region": "East", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": NaN, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0265", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Government support", "monthly_food_exp": 127.6, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0266", "gender": "Female", "age_group": "35-44", "region": "East", "healthcare_access": null, "education_level": "Secondary", "income_source": "Employment", "monthly_food_exp": 185.5, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0267", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 190.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0268", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 89.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0269", "gender": "Male", "age_group": "55+", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 198.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0270", "gender": "Male", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0271", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 116.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0272", "gender": "Female", "age_group": "45-54", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 164.9, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0273", "gender": "Female", "age_group": "25-34", "region": "West", "healthcare_access": "No", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": 101.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0274", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Self-employment", "monthly_food_exp": 212.5, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0275", "gender": "Female", "age_group": "45-54", "region": "North", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Government support", "monthly_food_exp": 75.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0276", "gender": "Female", "age_group": "55+", "region": "North", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Employment", "monthly_food_exp": 192.9, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0277", "gender": "Female", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Self-employment", "monthly_food_exp": 127.4, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0278", "gender": "Female", "age_group": "55+", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Family/remittances", "monthly_food_exp": 95.3, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0279", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 236.8, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0280", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Family/remittances", "monthly_food_exp": 90.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0281", "gender": "Female", "age_group": "25-34", "region": "South", "healthcare_access": "No", "education_level": null, "income_source": "Family/remittances", "monthly_food_exp": 132.3, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0282", "gender": "Male", "age_group": "55+", "region": "West", "healthcare_access": "Yes", "education_level": "University or above", "income_source": "Family/remittances", "monthly_food_exp": 88.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 1}, {"resp_id": "R0283", "gender": "Male", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "Secondary", "income_source": "No income", "monthly_food_exp": NaN, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 1, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0284", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": null, "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 144.2, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0285", "gender": "Female", "age_group": "35-44", "region": "West", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 202.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0286", "gender": "Male", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "University or above", "income_source": "Government support", "monthly_food_exp": NaN, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0287", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 252.1, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0288", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 69.3, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0289", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 98.4, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0290", "gender": "Female", "age_group": "18-24", "region": "South", "healthcare_access": "No", "education_level": "Secondary", "income_source": "Government support", "monthly_food_exp": 137.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0291", "gender": "Male", "age_group": "18-24", "region": "West", "healthcare_access": "Yes", "education_level": "Primary", "income_source": "Self-employment", "monthly_food_exp": 173.4, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0292", "gender": "Male", "age_group": "35-44", "region": "Central", "healthcare_access": "Yes", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 169.8, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0293", "gender": "Female", "age_group": "25-34", "region": "Central", "healthcare_access": "Yes", "education_level": "Secondary", "income_source": "Self-employment", "monthly_food_exp": 242.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0294", "gender": "Male", "age_group": "25-34", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 180.0, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0295", "gender": "Male", "age_group": "55+", "region": "West", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Family/remittances", "monthly_food_exp": 104.7, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0296", "gender": "Female", "age_group": "35-44", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Self-employment", "monthly_food_exp": 203.3, "barrier_cost": 1, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 1}, {"resp_id": "R0297", "gender": "Female", "age_group": "35-44", "region": "South", "healthcare_access": "No", "education_level": "Vocational/Technical", "income_source": "Employment", "monthly_food_exp": 181.5, "barrier_cost": 1, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0298", "gender": "Male", "age_group": "18-24", "region": "Central", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Employment", "monthly_food_exp": 185.0, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}, {"resp_id": "R0299", "gender": "Female", "age_group": "25-34", "region": "North", "healthcare_access": "No", "education_level": "No formal education", "income_source": "Government support", "monthly_food_exp": 129.1, "barrier_cost": 0, "barrier_distance": 0, "barrier_language": 0, "barrier_long_wait_times": 1, "barrier_lack_of_awareness": 0}, {"resp_id": "R0300", "gender": "Male", "age_group": "18-24", "region": "North", "healthcare_access": "Yes", "education_level": "No formal education", "income_source": "Government support", "monthly_food_exp": 130.2, "barrier_cost": 0, "barrier_distance": 1, "barrier_language": 0, "barrier_long_wait_times": 0, "barrier_lack_of_awareness": 0}]
+;
+
+const REGIONS = ['Central','East','North','South','West'];
+const AGE_GROUPS = ['18-24','25-34','35-44','45-54','55+'];
+const EDU_LEVELS = ['No formal education','Primary','Secondary','Vocational/Technical','University or above','Not answered'];
+function eduVal(d) { return d.education_level === null ? 'Not answered' : d.education_level; }
+const INCOME_SOURCES = ['Employment','Family/remittances','Government support','No income','Self-employment'];
+const BARRIERS = ['barrier_cost','barrier_distance','barrier_language','barrier_long_wait_times','barrier_lack_of_awareness'];
+const BARRIER_LABELS = ['Cost','Distance','Language','Long Wait Times','Lack of Awareness'];
+
+const COLORS = {
+  yes: 'rgba(16,185,129,0.85)',
+  no: 'rgba(239,68,68,0.85)',
+  palette: [
+    'rgba(79,70,229,0.85)','rgba(16,185,129,0.85)','rgba(245,158,11,0.85)',
+    'rgba(239,68,68,0.85)','rgba(139,92,246,0.85)','rgba(20,184,166,0.85)'
+  ]
+};
+
+let charts = {};
+
+function getFiltered() {
+  const g = document.getElementById('f-gender').value;
+  const a = document.getElementById('f-age').value;
+  const r = document.getElementById('f-region').value;
+  const h = document.getElementById('f-hca').value;
+  const e = document.getElementById('f-edu').value;
+  const i = document.getElementById('f-income').value;
+  const searchEl = document.getElementById('tbl-search');
+  const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  return RAW.filter(d =>
+    (!g || d.gender === g) &&
+    (!a || d.age_group === a) &&
+    (!r || d.region === r) &&
+    (!h || (h === '__missing__' ? d.healthcare_access === null : d.healthcare_access === h)) &&
+    (!e || (e === '__missing__' ? d.education_level === null : d.education_level === e)) &&
+    (!i || d.income_source === i) &&
+    (!q || [d.resp_id,d.gender,d.age_group,d.region,d.healthcare_access,d.education_level,d.income_source]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(q)))
+  );
+}
+
+function pct(n, total) {
+  if (!total) return '0%';
+  return Math.round(n/total*100) + '%';
+}
+
+function avg(arr) {
+  const valid = arr.filter(v => typeof v === 'number' && isFinite(v));
+  if (!valid.length) return null;
+  return (valid.reduce((a,b)=>a+b,0)/valid.length).toFixed(1);
+}
+
+function updateKPIs(data) {
+  const total = data.length;
+  const withHCA = data.filter(d => d.healthcare_access === 'Yes').length;
+  const noHCA = data.filter(d => d.healthcare_access === 'No').length;
+  const foodAvg = avg(data.map(d=>d.monthly_food_exp));
+  const totalBarriers = BARRIERS.reduce((s,b)=>s+data.reduce((ss,d)=>ss+(d[b]||0),0),0);
+  const hcaAnswered = withHCA + noHCA;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-hca-yes').textContent = hcaAnswered ? pct(withHCA,hcaAnswered) : '—';
+  document.getElementById('kpi-hca-no').textContent = hcaAnswered ? pct(noHCA,hcaAnswered) : '—';
+  document.getElementById('kpi-food').textContent = foodAvg ? '$' + foodAvg : '—';
+  document.getElementById('kpi-barriers').textContent = totalBarriers;
+  document.getElementById('record-count').textContent = total + ' of 300 respondents';
+  document.getElementById('tbl-count').textContent = total;
+}
+
+function makeOrUpdate(id, type, data, options) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, { type, data, options });
+}
+
+const baseOpts = (legend=false) => ({
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: legend, position: 'bottom', labels: { font: { size: 11 } } }, tooltip: { mode: 'index' } },
+  scales: { x: { grid: { display: false } }, y: { grid: { color: '#f1f5f9' }, beginAtZero: true } }
+});
+
+function updateRegionChart(data) {
+  const yes = REGIONS.map(r => data.filter(d=>d.region===r&&d.healthcare_access==='Yes').length);
+  const no  = REGIONS.map(r => data.filter(d=>d.region===r&&d.healthcare_access==='No').length);
+  makeOrUpdate('chart-region','bar',{
+    labels: REGIONS,
+    datasets: [
+      { label:'Yes', data: yes, backgroundColor: COLORS.yes, borderRadius:4 },
+      { label:'No',  data: no,  backgroundColor: COLORS.no, borderRadius:4 }
+    ]
+  }, { ...baseOpts(true), plugins: { ...baseOpts(true).plugins } });
+}
+
+function updateBarriersChart(data) {
+  const totals = BARRIERS.map(b => data.reduce((s,d)=>s+(d[b]||0),0));
+  makeOrUpdate('chart-barriers','bar',{
+    labels: BARRIER_LABELS,
+    datasets: [{ label:'Count', data: totals, backgroundColor: COLORS.palette, borderRadius:4 }]
+  }, {
+    ...baseOpts(false),
+    indexAxis: 'y',
+    scales: { y: { grid: { display:false } }, x: { grid: { color:'#f1f5f9' }, beginAtZero:true } }
+  });
+}
+
+function updateAgeChart(data) {
+  const yes = AGE_GROUPS.map(a => data.filter(d=>d.age_group===a&&d.healthcare_access==='Yes').length);
+  const no  = AGE_GROUPS.map(a => data.filter(d=>d.age_group===a&&d.healthcare_access==='No').length);
+  makeOrUpdate('chart-age','bar',{
+    labels: AGE_GROUPS,
+    datasets: [
+      { label:'Yes', data: yes, backgroundColor: COLORS.yes, borderRadius:4 },
+      { label:'No',  data: no,  backgroundColor: COLORS.no, borderRadius:4 }
+    ]
+  }, { ...baseOpts(true) });
+}
+
+function updateIncomeChart(data) {
+  const counts = INCOME_SOURCES.map(s => data.filter(d=>d.income_source===s).length);
+  makeOrUpdate('chart-income','doughnut',{
+    labels: INCOME_SOURCES,
+    datasets: [{ data: counts, backgroundColor: COLORS.palette, borderWidth:2 }]
+  }, {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display:true, position:'right', labels:{ font:{size:11}, boxWidth:14 } } }
+  });
+}
+
+function updateEduChart(data) {
+  const yes = EDU_LEVELS.map(e => data.filter(d=>eduVal(d)===e&&d.healthcare_access==='Yes').length);
+  const no  = EDU_LEVELS.map(e => data.filter(d=>eduVal(d)===e&&d.healthcare_access==='No').length);
+  const hcana = EDU_LEVELS.map(e => data.filter(d=>eduVal(d)===e&&d.healthcare_access===null).length);
+  const LABELS_SHORT = ['No formal ed.','Primary','Secondary','Voc./Tech.','University+','Not answered'];
+  makeOrUpdate('chart-edu','bar',{
+    labels: LABELS_SHORT,
+    datasets: [
+      { label:'Yes',          data:yes,   backgroundColor:COLORS.yes,                  borderRadius:4, stack:'s' },
+      { label:'No',           data:no,    backgroundColor:COLORS.no,                   borderRadius:4, stack:'s' },
+      { label:'HCA unknown',  data:hcana, backgroundColor:'rgba(148,163,184,.6)',       borderRadius:4, stack:'s' }
+    ]
+  }, { ...baseOpts(true), scales: { x:{ grid:{display:false}, stacked:true }, y:{ stacked:true, grid:{color:'#f1f5f9'}, beginAtZero:true } } });
+}
+
+function updateFoodChart(data) {
+  const vals = data.map(d=>d.monthly_food_exp).filter(v=>v!==null);
+  const bins = [0,50,100,150,200,250,300];
+  const labels = bins.slice(0,-1).map((b,i)=>`${b}-${bins[i+1]}`);
+  const counts = bins.slice(0,-1).map((b,i)=>vals.filter(v=>v>=b&&v<bins[i+1]).length);
+  makeOrUpdate('chart-food','bar',{
+    labels,
+    datasets: [{ label:'Respondents', data:counts, backgroundColor:'rgba(79,70,229,0.75)', borderRadius:4 }]
+  }, baseOpts(false));
+}
+
+function getTableFiltered(data) {
+  const id  = (document.getElementById('tf-id')     || {value:''}).value.trim().toLowerCase();
+  const g   = (document.getElementById('tf-gender') || {value:''}).value;
+  const a   = (document.getElementById('tf-age')    || {value:''}).value;
+  const r   = (document.getElementById('tf-region') || {value:''}).value;
+  const h   = (document.getElementById('tf-hca')    || {value:''}).value;
+  const e   = (document.getElementById('tf-edu')    || {value:''}).value;
+  const i   = (document.getElementById('tf-income') || {value:''}).value;
+  return data.filter(d =>
+    (!id || d.resp_id.toLowerCase().includes(id)) &&
+    (!g  || d.gender === g) &&
+    (!a  || d.age_group === a) &&
+    (!r  || d.region === r) &&
+    (!h  || d.healthcare_access === h) &&
+    (!e  || d.education_level === e) &&
+    (!i  || d.income_source === i)
+  );
+}
+
+function refreshTable() {
+  updateTable(getTableFiltered(getFiltered()));
+}
+
+function updateTable(data) {
+  const maxRows = 200;
+  const rows = data.slice(0, maxRows);
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = rows.map(d => {
+    const hcaPill = d.healthcare_access === 'Yes'
+      ? '<span class="pill pill-yes">Yes</span>'
+      : d.healthcare_access === 'No'
+        ? '<span class="pill pill-no">No</span>'
+        : '<span class="pill pill-na">N/A</span>';
+    const b = (v) => v ? '✓' : '–';
+    const food = d.monthly_food_exp !== null ? '$' + d.monthly_food_exp.toFixed(1) : '—';
+    return `<tr>
+      <td>${d.resp_id}</td>
+      <td>${d.gender||'—'}</td>
+      <td>${d.age_group||'—'}</td>
+      <td>${d.region||'—'}</td>
+      <td>${hcaPill}</td>
+      <td>${d.education_level || '<span style="color:#94a3b8;font-style:italic">Not answered</span>'}</td>
+      <td>${d.income_source||'—'}</td>
+      <td>${food}</td>
+      <td style="text-align:center">${b(d.barrier_cost)}</td>
+      <td style="text-align:center">${b(d.barrier_distance)}</td>
+      <td style="text-align:center">${b(d.barrier_language)}</td>
+      <td style="text-align:center">${b(d.barrier_long_wait_times)}</td>
+      <td style="text-align:center">${b(d.barrier_lack_of_awareness)}</td>
+    </tr>`;
+  }).join('');
+  if (data.length > maxRows) {
+    tbody.innerHTML += `<tr><td colspan="13" style="text-align:center;color:#64748b;padding:12px">
+      ... showing first ${maxRows} of ${data.length} records</td></tr>`;
+  }
+}
+
+function refresh() {
+  const data = getFiltered();
+  updateKPIs(data);
+  updateRegionChart(data);
+  updateBarriersChart(data);
+  updateAgeChart(data);
+  updateIncomeChart(data);
+  updateEduChart(data);
+  updateFoodChart(data);
+  updateTable(getTableFiltered(data));
+}
+
+function resetFilters() {
+  ['f-gender','f-age','f-region','f-hca','f-edu','f-income'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  refresh();
+}
+
+document.querySelectorAll('select').forEach(s => s.addEventListener('change', refresh));
+refresh();
+</script>
+
+<!-- Codebook -->
+<div class="codebook-section">
+  <div class="codebook-toggle" onclick="toggleCodebook()">
+    <h3>Codebook — Variable Reference</h3>
+    <span class="cb-chevron" id="cb-chevron">&#9660;</span>
+  </div>
+  <div id="codebook-body" class="codebook-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Variable Name</th>
+          <th>Label</th>
+          <th>Type</th>
+          <th>Values / Categories</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>resp_id</strong></td>
+          <td>Respondent ID</td>
+          <td><span class="cb-type cb-type-id">ID</span></td>
+          <td class="cb-values">Unique identifier (e.g. R0001)</td>
+        </tr>
+        <tr>
+          <td><strong>gender</strong></td>
+          <td>Gender</td>
+          <td><span class="cb-type cb-type-cat">Categorical</span></td>
+          <td class="cb-values">Male / Female</td>
+        </tr>
+        <tr>
+          <td><strong>age_group</strong></td>
+          <td>Age group</td>
+          <td><span class="cb-type cb-type-cat">Categorical</span></td>
+          <td class="cb-values">18-24 / 25-34 / 35-44 / 45-54 / 55+</td>
+        </tr>
+        <tr>
+          <td><strong>region</strong></td>
+          <td>Region</td>
+          <td><span class="cb-type cb-type-cat">Categorical</span></td>
+          <td class="cb-values">North / South / East / West / Central</td>
+        </tr>
+        <tr>
+          <td><strong>healthcare_access</strong></td>
+          <td>Has access to healthcare services</td>
+          <td><span class="cb-type cb-type-bin">Binary</span></td>
+          <td class="cb-values">
+            Yes / No
+            <div class="cb-note">&#9888; ~5% missing</div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>education_level</strong></td>
+          <td>Highest level of education completed</td>
+          <td><span class="cb-type cb-type-cat">Categorical (ordered)</span></td>
+          <td class="cb-values">
+            No formal education / Primary / Secondary / Vocational/Technical / University or above
+            <div class="cb-note">&#9888; ~4% missing</div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>income_source</strong></td>
+          <td>Primary source of income</td>
+          <td><span class="cb-type cb-type-cat">Categorical</span></td>
+          <td class="cb-values">Employment / Self-employment / Government support / Family/remittances / No income</td>
+        </tr>
+        <tr>
+          <td><strong>monthly_food_exp</strong></td>
+          <td>Monthly household expenditure on food (USD)</td>
+          <td><span class="cb-type cb-type-cont">Continuous</span></td>
+          <td class="cb-values">
+            Numeric value in USD
+            <div class="cb-note">&#9888; ~3% missing</div>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>barrier_cost</strong></td>
+          <td>Barrier to healthcare: Cost</td>
+          <td><span class="cb-type cb-type-bin-multi">Binary (multi-select)</span></td>
+          <td class="cb-values">1 = selected, 0 = not selected</td>
+        </tr>
+        <tr>
+          <td><strong>barrier_distance</strong></td>
+          <td>Barrier to healthcare: Distance</td>
+          <td><span class="cb-type cb-type-bin-multi">Binary (multi-select)</span></td>
+          <td class="cb-values">1 = selected, 0 = not selected</td>
+        </tr>
+        <tr>
+          <td><strong>barrier_language</strong></td>
+          <td>Barrier to healthcare: Language</td>
+          <td><span class="cb-type cb-type-bin-multi">Binary (multi-select)</span></td>
+          <td class="cb-values">1 = selected, 0 = not selected</td>
+        </tr>
+        <tr>
+          <td><strong>barrier_long_wait_times</strong></td>
+          <td>Barrier to healthcare: Long wait times</td>
+          <td><span class="cb-type cb-type-bin-multi">Binary (multi-select)</span></td>
+          <td class="cb-values">1 = selected, 0 = not selected</td>
+        </tr>
+        <tr>
+          <td><strong>barrier_lack_of_awareness</strong></td>
+          <td>Barrier to healthcare: Lack of awareness</td>
+          <td><span class="cb-type cb-type-bin-multi">Binary (multi-select)</span></td>
+          <td class="cb-values">1 = selected, 0 = not selected</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function toggleTable() {
+  const wrap = document.getElementById('tbl-body-wrap');
+  const chevron = document.getElementById('tbl-chevron');
+  const hidden = wrap.style.display === 'none';
+  wrap.style.display = hidden ? 'block' : 'none';
+  chevron.style.transform = hidden ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function toggleCodebook() {
+  const body = document.getElementById('codebook-body');
+  const chevron = document.getElementById('cb-chevron');
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? 'block' : 'none';
+  chevron.classList.toggle('open', !hidden);
+}
+</script>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── 1a: Education × Gender ────────────────────────────────────────────────────
+const EDU_1A = ['No formal education','Primary','Secondary','Vocational/Technical','University or above','Not answered'];
+const DATA_1A = {
+  'No formal education': [16,16], 'Primary': [33,30], 'Secondary': [57,50],
+  'Vocational/Technical': [30,23], 'University or above': [16,19], 'Not answered': [9,1]
+};
+const F1A=152, M1A=138, G1A=290;
+const COLORS_1A = ['#7eb8d4','#8cc8a4'];
+let mode1a='col';
+
+function set1a(m) {
+  mode1a=m;
+  ['col','row','total'].forEach(x=>document.getElementById('1a-'+x).classList.toggle('active',x===m));
+  const lbl={col:'% (col)',row:'% (row)',total:'% (total)'};
+  ['hf','hm','ht'].forEach(h=>document.getElementById('1a-'+h).textContent=lbl[m]);
+  render1a();
+}
+
+function render1a() {
+  const tbody=document.getElementById('1a-body');
+  const rows=EDU_1A.map(edu=>{
+    const [f,m]=DATA_1A[edu]; const t=f+m; const isNA=edu==='Not answered';
+    let fp,mp,tp;
+    if(isNA){fp='—';mp='—';tp='—';}
+    else if(mode1a==='col'){fp=p(f,F1A);mp=p(m,M1A);tp=p(t,G1A);}
+    else if(mode1a==='row'){fp=p(f,t);mp=p(m,t);tp='100.0%';}
+    else{fp=p(f,G1A);mp=p(m,G1A);tp=p(t,G1A);}
+    const fW=isNA?0:Math.round(f/F1A*55); const mW=isNA?0:Math.round(m/M1A*55);
+    const rs=isNA?' style="color:#94a3b8;font-style:italic"':'';
+    return `<tr${rs}>
+      <td class="al"${isNA?' style="color:#94a3b8;font-style:italic"':''}>${edu}</td>
+      <td><div class="an-cell"><span class="an-count">${f}</span><span class="an-pct">${fp}</span>${!isNA?`<div class="an-bar" style="width:${fW}px;background:#7eb8d4"></div>`:''}</div></td>
+      <td>${fp}</td>
+      <td><div class="an-cell"><span class="an-count">${m}</span><span class="an-pct">${mp}</span>${!isNA?`<div class="an-bar" style="width:${mW}px;background:#8cc8a4"></div>`:''}</div></td>
+      <td>${mp}</td>
+      <td><div class="an-cell"><span class="an-count">${t}</span><span class="an-pct">${tp}</span></div></td>
+      <td>${tp}</td>
+    </tr>`;
+  });
+  let fp,mp,tp;
+  if(mode1a==='col'){fp='100.0%';mp='100.0%';tp='100.0%';}
+  else if(mode1a==='row'){fp=p(F1A,G1A);mp=p(M1A,G1A);tp='100.0%';}
+  else{fp='100.0%';mp='100.0%';tp='100.0%';}
+  rows.push(`<tr class="an-total"><td class="al">Total (valid, n=290)</td><td>${F1A}</td><td>${fp}</td><td>${M1A}</td><td>${mp}</td><td>${G1A}</td><td>${tp}</td></tr>`);
+  tbody.innerHTML=rows.join('');
+}
+
+// ── 1b: Healthcare × Region ───────────────────────────────────────────────────
+const DATA_1B=[
+  {r:'North',  yes:39,no:34,na:4, tot:77, valid:73},
+  {r:'South',  yes:30,no:26,na:4, tot:60, valid:56},
+  {r:'East',   yes:32,no:26,na:7, tot:65, valid:58},
+  {r:'West',   yes:27,no:22,na:4, tot:53, valid:49},
+  {r:'Central',yes:30,no:15,na:0, tot:45, valid:45},
+];
+const TY=158,TN=123,TNA=19,TV=281;
+let mode1b='row';
+
+function set1b(m) {
+  mode1b=m;
+  ['row','col','total'].forEach(x=>document.getElementById('1b-'+x).classList.toggle('active',x===m));
+  const lbl={row:'% (row)',col:'% (col)',total:'% (total)'};
+  document.getElementById('1b-hy').textContent=lbl[m];
+  document.getElementById('1b-hn').textContent=lbl[m];
+  render1b();
+}
+
+function render1b() {
+  const tbody=document.getElementById('1b-body');
+  const rows=DATA_1B.map(d=>{
+    let yp,np;
+    if(mode1b==='row'){yp=p(d.yes,d.valid);np=p(d.no,d.valid);}
+    else if(mode1b==='col'){yp=p(d.yes,TY);np=p(d.no,TN);}
+    else{yp=p(d.yes,TV);np=p(d.no,TV);}
+    const naS=d.tot?p(d.na,d.tot):'—';
+    return `<tr>
+      <td class="al">${d.r}</td><td>${d.tot}</td><td>${d.valid}</td>
+      <td><div class="an-cell"><span class="an-count">${d.yes}</span><span class="an-pct">${yp}</span><div class="an-bar" style="width:${Math.round(d.yes/d.valid*55)}px;background:#8cc8a4"></div></div></td><td>${yp}</td>
+      <td><div class="an-cell"><span class="an-count">${d.no}</span><span class="an-pct">${np}</span><div class="an-bar" style="width:${Math.round(d.no/d.valid*55)}px;background:#f0c08c"></div></div></td><td>${np}</td>
+      <td style="color:#94a3b8">${d.na}</td><td style="color:#94a3b8;font-size:.7rem">${naS} of region</td>
+    </tr>`;
+  });
+  let yp,np;
+  if(mode1b==='row'){yp=p(TY,TV);np=p(TN,TV);}
+  else if(mode1b==='col'){yp='100.0%';np='100.0%';}
+  else{yp=p(TY,TV);np=p(TN,TV);}
+  rows.push(`<tr class="an-total"><td class="al">Total</td><td>300</td><td>${TV}</td><td>${TY}</td><td>${yp}</td><td>${TN}</td><td>${np}</td><td style="color:#94a3b8">${TNA}</td><td style="color:#94a3b8;font-size:.7rem">6.3% of total</td></tr>`);
+  tbody.innerHTML=rows.join('');
+}
+
+// ── 1c: Income × Age ──────────────────────────────────────────────────────────
+const INCOME_1C=['Employment','Self-employment','Govt. support','Family/remittances','No income'];
+const AGE_N=[65,68,76,47,44];
+const COUNTS_1C=[[19,16,22,15,14],[14,18,16,8,12],[11,15,14,11,9],[15,14,14,11,7],[6,5,10,2,2]];
+const ROW_TOT=[86,68,60,61,25];
+const PAL=['#7eb8d4','#8cc8a4','#f0c08c','#c8a0c4','#f0d880'];
+let mode1c='col';
+
+function set1c(m) {
+  mode1c=m;
+  ['col','row','total'].forEach(x=>document.getElementById('1c-'+x).classList.toggle('active',x===m));
+  const lbl={col:'% (col)',row:'% (row)',total:'% (total)'};
+  [1,2,3,4,5,6].forEach(i=>document.getElementById('1c-h'+i).textContent=lbl[m]);
+  render1c();
+}
+
+function render1c() {
+  const tbody=document.getElementById('1c-body');
+  const rows=INCOME_1C.map((inc,i)=>{
+    const cells=COUNTS_1C[i].map((c,j)=>{
+      let pp;
+      if(mode1c==='col')pp=p(c,AGE_N[j]);
+      else if(mode1c==='row')pp=p(c,ROW_TOT[i]);
+      else pp=p(c,300);
+      return `<td><div class="an-cell"><span class="an-count">${c}</span><span class="an-pct">${pp}</span><div class="an-bar" style="width:${Math.round(c/AGE_N[j]*50)}px;background:${PAL[j]}"></div></div></td><td>${pp}</td>`;
+    }).join('');
+    let tp=mode1c==='row'?'100.0%':p(ROW_TOT[i],300);
+    return `<tr><td class="al">${inc}</td>${cells}<td><strong>${ROW_TOT[i]}</strong></td><td>${tp}</td></tr>`;
+  });
+  const colCells=AGE_N.map((n,i)=>`<td><strong>${n}</strong></td><td>${mode1c==='col'?'100.0%':p(n,300)}</td>`).join('');
+  rows.push(`<tr class="an-total"><td class="al">Total</td>${colCells}<td>300</td><td>100.0%</td></tr>`);
+  tbody.innerHTML=rows.join('');
+}
+
+// ── Helper ────────────────────────────────────────────────────────────────────
+function p(n,d){return d?(n/d*100).toFixed(1)+'%':'—';}
+
+// ── Income × Age grouped bar ──────────────────────────────────────────────────
+new Chart(document.getElementById('viz-income-age'),{
+  type:'bar',
+  data:{
+    labels:['18–24','25–34','35–44','45–54','55+'],
+    datasets:INCOME_1C.map((label,i)=>({label,data:COUNTS_1C[i],backgroundColor:PAL[i],borderRadius:5,borderWidth:0}))
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:13,padding:16}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}`}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:10},stepSize:5}}}
+  }
+});
+
+// ── Barriers × Gender grouped bar ────────────────────────────────────────────
+const BARRIERS_2B=['Cost','Distance','Language','Long wait times','Lack of awareness'];
+const F_PCT=[41.0,25.5,17.4,45.3,16.8];
+const M_PCT=[36.7,31.7,21.6,36.0,20.1];
+new Chart(document.getElementById('viz-barriers-gender'),{
+  type:'bar',
+  data:{labels:BARRIERS_2B,datasets:[
+    {label:'Female (n=161)',data:F_PCT,backgroundColor:'#7eb8d4',borderRadius:5,borderWidth:0},
+    {label:'Male (n=139)',  data:M_PCT,backgroundColor:'#8cc8a4',borderRadius:5,borderWidth:0}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:13,padding:16}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}%`}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{beginAtZero:true,max:60,grid:{color:'#f1f5f9'},ticks:{callback:v=>v+'%',font:{size:10}}}}
+  }
+});
+
+
+
+// ── Init all tables ───────────────────────────────────────────────────────────
+render1a(); render1b(); render1c();
+</script>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- RELATED FILES                                         -->
+<!-- ══════════════════════════════════════════════════════ -->
+<style>
+  .files-section { padding: 0 32px 48px; }
+  .files-section h2 { font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .files-section .files-sub { font-size: .78rem; color: #94a3b8; margin-bottom: 20px; }
+  .files-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .file-card { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-top: 3px solid #e2e8f0; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 6px; transition: box-shadow .15s, transform .15s; cursor: pointer; }
+  .file-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-2px); }
+  .file-card.blue  { border-top-color: #7eb8d4; }
+  .file-card.green { border-top-color: #8cc8a4; }
+  .file-card.peach { border-top-color: #f0c08c; }
+  .file-card.mauve { border-top-color: #c8a0c4; }
+  .file-card.straw { border-top-color: #f0d880; }
+  .file-card.dark  { border-top-color: #1a1a2e; }
+  .file-card-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #94a3b8; }
+  .file-card-title { font-size: .88rem; font-weight: 700; color: #1a1a2e; }
+  .file-card-desc  { font-size: .75rem; color: #64748b; line-height: 1.5; }
+  .file-card-open  { margin-top: 8px; font-size: .72rem; font-weight: 700; color: #4f46e5; }
+</style>
+
+<div class="files-section">
+  <h2>Standalone Files</h2>
+  <p class="files-sub">Click any card to open the individual table or visualisation in a new tab.</p>
+  <div class="files-grid">
+
+    <a class="file-card blue" href="1a_education_by_gender.html" target="_blank">
+      <span class="file-card-label">Table · 1a</span>
+      <span class="file-card-title">Education Level by Gender</span>
+      <span class="file-card-desc">Disaggregated counts and percentages. Includes "Not answered" row. Valid n = 290.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+    <a class="file-card green" href="1b_healthcare_by_region.html" target="_blank">
+      <span class="file-card-label">Table · 1b</span>
+      <span class="file-card-title">Healthcare Access by Region</span>
+      <span class="file-card-desc">Counts and percentages by region with Not answered column. Valid n = 281.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+    <a class="file-card peach" href="1c_income_by_age.html" target="_blank">
+      <span class="file-card-label">Table · 1c</span>
+      <span class="file-card-title">Income Source by Age Group</span>
+      <span class="file-card-desc">Full disaggregated table with toggle modes. No missing data. n = 300.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+    <a class="file-card peach" href="1c_income_by_age_grouped.html" target="_blank">
+      <span class="file-card-label">Chart · 1c</span>
+      <span class="file-card-title">Income by Age — Grouped Bar</span>
+      <span class="file-card-desc">Clean grouped bar chart showing income source distribution across age groups.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+    <a class="file-card mauve" href="1c_income_by_age_viz.html" target="_blank">
+      <span class="file-card-label">Visualisation · 1c</span>
+      <span class="file-card-title">Income by Age — Full Viz</span>
+      <span class="file-card-desc">Multi-chart dashboard: stacked, grouped, doughnut and heatmap views.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+    <a class="file-card straw" href="2b_barriers_by_gender.html" target="_blank">
+      <span class="file-card-label">Table · 2b</span>
+      <span class="file-card-title">Barriers to Healthcare by Gender</span>
+      <span class="file-card-desc">Selection rates for each barrier disaggregated by gender. Includes gender gap column.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+    <a class="file-card dark" href="2b_barriers_by_gender_viz.html" target="_blank">
+      <span class="file-card-label">Visualisation · 2b</span>
+      <span class="file-card-title">Barriers by Gender — Charts</span>
+      <span class="file-card-desc">Grouped bar chart and gender gap chart with key observations.</span>
+      <span class="file-card-open">Open →</span>
+    </a>
+
+  </div>
+</div>
+
+</body>
+</html>
