@@ -992,83 +992,103 @@ render1a(); render1b(); render1c();
 </script>
 
 <!-- ══════════════════════════════════════════════════════ -->
-<!-- RELATED FILES                                         -->
+<!-- KEY VISUALISATIONS                                    -->
 <!-- ══════════════════════════════════════════════════════ -->
 <style>
-  .files-section { padding: 0 32px 48px; }
-  .files-section h2 { font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 6px; }
-  .files-section .files-sub { font-size: .78rem; color: #94a3b8; margin-bottom: 20px; }
-  .files-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
-  .file-card { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-top: 3px solid #e2e8f0; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 6px; transition: box-shadow .15s, transform .15s; cursor: pointer; }
-  .file-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-2px); }
-  .file-card.blue  { border-top-color: #7eb8d4; }
-  .file-card.green { border-top-color: #8cc8a4; }
-  .file-card.peach { border-top-color: #f0c08c; }
-  .file-card.mauve { border-top-color: #c8a0c4; }
-  .file-card.straw { border-top-color: #f0d880; }
-  .file-card.dark  { border-top-color: #1a1a2e; }
-  .file-card-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #94a3b8; }
-  .file-card-title { font-size: .88rem; font-weight: 700; color: #1a1a2e; }
-  .file-card-desc  { font-size: .75rem; color: #64748b; line-height: 1.5; }
-  .file-card-open  { margin-top: 8px; font-size: .72rem; font-weight: 700; color: #4f46e5; }
+  .viz-section { padding: 0 32px 48px; }
+  .viz-section > h2 { font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .viz-section > .viz-section-sub { font-size: .78rem; color: #94a3b8; margin-bottom: 20px; }
+  .viz-card { background: #fff; border-radius: 14px; padding: 28px 30px; box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 20px; }
+  .viz-card h3 { font-size: .95rem; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .viz-card .viz-card-sub { font-size: .76rem; color: #94a3b8; margin-bottom: 22px; }
+  .viz-card-wrap { position: relative; height: 360px; }
 </style>
 
-<div class="files-section">
-  <h2>Standalone Files</h2>
-  <p class="files-sub">Click any card to open the individual table or visualisation in a new tab.</p>
-  <div class="files-grid">
+<div class="viz-section">
+  <h2>Key Visualisations</h2>
+  <p class="viz-section-sub">Embedded charts from the disaggregated analysis</p>
 
-    <a class="file-card blue" href="1a_education_by_gender.html" target="_blank">
-      <span class="file-card-label">Table · 1a</span>
-      <span class="file-card-title">Education Level by Gender</span>
-      <span class="file-card-desc">Disaggregated counts and percentages. Includes "Not answered" row. Valid n = 290.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
-    <a class="file-card green" href="1b_healthcare_by_region.html" target="_blank">
-      <span class="file-card-label">Table · 1b</span>
-      <span class="file-card-title">Healthcare Access by Region</span>
-      <span class="file-card-desc">Counts and percentages by region with Not answered column. Valid n = 281.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
-    <a class="file-card peach" href="1c_income_by_age.html" target="_blank">
-      <span class="file-card-label">Table · 1c</span>
-      <span class="file-card-title">Income Source by Age Group</span>
-      <span class="file-card-desc">Full disaggregated table with toggle modes. No missing data. n = 300.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
-    <a class="file-card peach" href="1c_income_by_age_grouped.html" target="_blank">
-      <span class="file-card-label">Chart · 1c</span>
-      <span class="file-card-title">Income by Age — Grouped Bar</span>
-      <span class="file-card-desc">Clean grouped bar chart showing income source distribution across age groups.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
-    <a class="file-card mauve" href="1c_income_by_age_viz.html" target="_blank">
-      <span class="file-card-label">Visualisation · 1c</span>
-      <span class="file-card-title">Income by Age — Full Viz</span>
-      <span class="file-card-desc">Multi-chart dashboard: stacked, grouped, doughnut and heatmap views.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
-    <a class="file-card straw" href="2b_barriers_by_gender.html" target="_blank">
-      <span class="file-card-label">Table · 2b</span>
-      <span class="file-card-title">Barriers to Healthcare by Gender</span>
-      <span class="file-card-desc">Selection rates for each barrier disaggregated by gender. Includes gender gap column.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
-    <a class="file-card dark" href="2b_barriers_by_gender_viz.html" target="_blank">
-      <span class="file-card-label">Visualisation · 2b</span>
-      <span class="file-card-title">Barriers by Gender — Charts</span>
-      <span class="file-card-desc">Grouped bar chart and gender gap chart with key observations.</span>
-      <span class="file-card-open">Open →</span>
-    </a>
-
+  <!-- 1c: Income by Age Group -->
+  <div class="viz-card">
+    <h3>Distribution of Income Source by Age Group</h3>
+    <p class="viz-card-sub">Counts · n = 300 · No missing values</p>
+    <div class="viz-card-wrap">
+      <canvas id="viz-income-age-b"></canvas>
+    </div>
   </div>
+
+  <!-- 2b: Barriers by Gender -->
+  <div class="viz-card">
+    <h3>Selection Rate per Barrier by Gender</h3>
+    <p class="viz-card-sub">% of respondents within each gender who selected each barrier · Female n=161 · Male n=139 · Total n=300</p>
+    <div class="viz-card-wrap">
+      <canvas id="viz-barriers-gender-b"></canvas>
+    </div>
+  </div>
+
 </div>
+
+<script>
+// ── Income by Age Group (bottom) ──────────────────────────────────────────────
+(function(){
+  const AGE    = ['18–24','25–34','35–44','45–54','55+'];
+  const INCOME = ['Employment','Self-employment','Govt. support','Family/remittances','No income'];
+  const PAL    = ['#7eb8d4','#8cc8a4','#f0c08c','#c8a0c4','#f0d880'];
+  const COUNTS = [
+    [19,16,22,15,14],
+    [14,18,16, 8,12],
+    [11,15,14,11, 9],
+    [15,14,14,11, 7],
+    [ 6, 5,10, 2, 2],
+  ];
+  new Chart(document.getElementById('viz-income-age-b'),{
+    type:'bar',
+    data:{
+      labels:AGE,
+      datasets:INCOME.map((label,i)=>({label,data:COUNTS[i],backgroundColor:PAL[i],borderRadius:5,borderWidth:0}))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:12},boxWidth:14,padding:20}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}`}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:12}}},
+        y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11},stepSize:5}}
+      }
+    }
+  });
+})();
+
+// ── Barriers by Gender (bottom) ───────────────────────────────────────────────
+(function(){
+  const BARRIERS = ['Cost','Distance','Language','Long wait times','Lack of awareness'];
+  const F_PCT = [41.0,25.5,17.4,45.3,16.8];
+  const M_PCT = [36.7,31.7,21.6,36.0,20.1];
+  new Chart(document.getElementById('viz-barriers-gender-b'),{
+    type:'bar',
+    data:{
+      labels:BARRIERS,
+      datasets:[
+        {label:'Female (n=161)',data:F_PCT,backgroundColor:'#7eb8d4',borderRadius:5,borderWidth:0},
+        {label:'Male (n=139)',  data:M_PCT,backgroundColor:'#8cc8a4',borderRadius:5,borderWidth:0},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:12},boxWidth:14,padding:20}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}%`}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:12}}},
+        y:{beginAtZero:true,max:60,grid:{color:'#f1f5f9'},ticks:{font:{size:11},callback:v=>v+'%'}}
+      }
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
